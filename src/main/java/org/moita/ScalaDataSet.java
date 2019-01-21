@@ -1,6 +1,7 @@
 package org.moita;
 
 import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.function.ReduceFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
@@ -51,6 +52,19 @@ public class ScalaDataSet {
         Dataset<Person> personDF = table1DataSet.map(new RowToPersonMapper(), Encoders.bean(Person.class));
 
         personDF.collectAsList().forEach(System.out::println);
+
+        Person reducedPerson = personDF.reduce(new PersonReducer());
+
+        System.out.println(reducedPerson);
+    }
+
+    static class PersonReducer implements ReduceFunction<Person>, Serializable {
+
+        @Override
+        public Person call(Person person, Person t1) throws Exception {
+            person.setAge(person.getAge() + t1.getAge());
+            return person;
+        }
     }
 
     static class RowToPersonMapper implements MapFunction<Row, Person>, Serializable {
