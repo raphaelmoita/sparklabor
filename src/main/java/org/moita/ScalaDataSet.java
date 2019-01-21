@@ -1,10 +1,13 @@
 package org.moita;
 
 import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.moita.domain.Person;
 
-import static java.lang.Integer.parseInt;
+import java.io.Serializable;
 
 public class ScalaDataSet {
     private static final String TAB = "\\t";
@@ -37,15 +40,29 @@ public class ScalaDataSet {
 
         table1DataSet.show();
 
-        Dataset<Person> personDF = table1DataSet.map((MapFunction<Row, Person>) line -> {
-            Person person = new Person();
-            person.setName(line.getString(0));
-            person.setAge(Integer.valueOf(line.getString(1)));
-            person.setNationality(line.getString(2));
-            return person;
-        }, Encoders.bean(Person.class));
+//        Dataset<Person> personDF = table1DataSet.map((MapFunction<Row, Person>) line -> {
+//            Person person = new Person();
+//            person.setName(line.getString(0));
+//            person.setAge(Integer.valueOf(line.getString(1)));
+//            person.setNationality(line.getString(2));
+//            return person;
+//        }, Encoders.bean(Person.class));
+
+        Dataset<Person> personDF = table1DataSet.map(new RowToPersonMapper(), Encoders.bean(Person.class));
 
         personDF.collectAsList().forEach(System.out::println);
+    }
+
+    static class RowToPersonMapper implements MapFunction<Row, Person>, Serializable {
+
+        @Override
+        public Person call(Row row) throws Exception {
+            Person person = new Person();
+            person.setName(row.getString(0));
+            person.setAge(Integer.valueOf(row.getString(1)));
+            person.setNationality(row.getString(2));
+            return person;
+        }
     }
 
     public static void main(String[] args) {
