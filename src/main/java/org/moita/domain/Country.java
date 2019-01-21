@@ -4,15 +4,15 @@ import java.io.Serializable;
 
 public class Country implements Serializable {
 
-    private String nacionality;
+    private String nationality;
     private String language;
 
-    public String getNacionality() {
-        return nacionality;
+    public String getNationality() {
+        return nationality;
     }
 
-    public void setNacionality(String nacionality) {
-        this.nacionality = nacionality;
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
     }
 
     public String getLanguage() {

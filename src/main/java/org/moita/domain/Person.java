@@ -1,12 +1,14 @@
 package org.moita.domain;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
 import java.io.Serializable;
 
 public class Person implements Serializable {
 
     private String name;
     private Integer age;
-    private String nacionality;
+    private String nationality;
 
     public String getName() {
         return name;
@@ -24,11 +26,20 @@ public class Person implements Serializable {
         this.age = age;
     }
 
-    public String getNacionality() {
-        return nacionality;
+    public String getNationality() {
+        return nationality;
     }
 
-    public void setNacionality(String nacionality) {
-        this.nacionality = nacionality;
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this)
+                .append("name", name)
+                .append("age", age)
+                .append("nationality", nationality)
+                .toString();
     }
 }
