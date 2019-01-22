@@ -50,6 +50,9 @@ public class ScalaDataSet {
 //        }, Encoders.bean(Person.class));
 
         Dataset<Person> personDF = table1DataSet.map(new RowToPersonMapper(), Encoders.bean(Person.class));
+        
+        Dataset<Person> under41PersonDF = personDF.filter((FilterFunction<Person>) person -> person.getAge() < 41);
+        under41PersonDF.collectAsList().forEach(System.out::println);
 
         personDF.collectAsList().forEach(System.out::println);
 
