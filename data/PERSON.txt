@@ -1,0 +1,4 @@
+raphael	41	Brazil
+mariana	35	Brazil
+pawel	22	Poland
+ana	33	Poland

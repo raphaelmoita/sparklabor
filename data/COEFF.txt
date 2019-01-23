@@ -1,0 +1,2 @@
+Brazilian	0.2
+Polish	0.1
