@@ -3,23 +3,23 @@ package org.moita;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.FilterFunction;
+import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.sql.DataFrameReader;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.moita.domain.Coeff;
 import org.moita.domain.Country;
 import org.moita.domain.Person;
+import org.moita.domain.Result;
 
 public class Join {
 
     private static final String TAB = "\\t";
 
-    private static String PERSON_TAB = ""/home/rmoita/dev/projects/sparklabor/data/PERSON.txt";
-    private static String COUNTRY_TAB = ""/home/rmoita/dev/projects/sparklabor/data/COUNTRY.txt";
-    private static String COEFF_TAB = ""/home/rmoita/dev/projects/sparklabor/data/COEFF.txt";
+    private static String PERSON_TAB = "/home/rmoita/dev/projects/sparklabor/data/PERSON.txt";
+    private static String COUNTRY_TAB = "/home/rmoita/dev/projects/sparklabor/data/COUNTRY.txt";
+    private static String COEFF_TAB = "/home/rmoita/dev/projects/sparklabor/data/COEFF.txt";
 
     private SparkSession spark;
 
@@ -60,12 +60,32 @@ public class Join {
         Dataset<Country> countryDF = countryDataSet.map(new RowToCountryMapper(), Encoders.bean(Country.class));
         Dataset<Coeff> coeffDF = coeffDataSet.map(new RowToCoeffMapper(), Encoders.bean(Coeff.class));
 
-        final Dataset<Row> join = personDF.join(countryDF, "nationality")
-            .join(coeffDF, "language");
+        final Dataset<Row> join =
+                personDF.join(countryDF, "nationality")
+                        .join(coeffDF, "language")
+                        .filter((FilterFunction<Row>) r -> !"ana".equals(r.getAs("name")));
 
-        join.show();
+        final Dataset<Result> results = join.map((MapFunction<Row, Result>) Result::calculate, Encoders.bean(Result.class));
+        final Dataset<Result> results2 = join.map((MapFunction<Row, Result>) Result::calculate, Encoders.bean(Result.class));
+
+        JavaRDD<Result> union = results.toJavaRDD().union(results2.toJavaRDD());
+
+        Dataset<Row> unionDataSet = spark.createDataFrame(union, Result.class);
+
+        Dataset<Result> unionDataSet_NPE = spark.createDataFrame(union, Result.class)
+                .map((MapFunction<Row, Result>) Result::calculate, Encoders.bean(Result.class));
+
+        results.show();
+        results2.show();
+        unionDataSet.show();
     }
 
+    private static class Sum implements Function2<Row, Row, Row> {
+        @Override
+        public Row call(Row r1, Row r2) {
+            return RowFactory.create(r1);
+        }
+    }
 
     static class RowToPersonMapper implements MapFunction<Row, Person>, Serializable {
 
@@ -102,6 +122,6 @@ public class Join {
     }
 
     public static void main(String[] args) {
-        new ScalaDataSet().execute();
+        new Join().execute();
     }
 }
