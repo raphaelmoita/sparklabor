@@ -1,0 +1,131 @@
+package org.moita;
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.sql.Column;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.DecimalType;
+import org.apache.spark.sql.types.StructField;
+
+import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.concat;
+import static org.apache.spark.sql.functions.first;
+
+import com.ubs.poc.domain.QuarterOfYearSer;
+import com.ubs.poc.service.SparkConnector;
+
+import scala.Tuple2;
+import scala.collection.Iterator;
+import static java.math.BigDecimal.ROUND_HALF_UP;
+import static java.math.BigDecimal.ZERO;
+
+public class ExecutorSpark2
+{
+    private SparkConnector sparkConnector;
+
+    private long sliceId = ******;
+    private final String scenario = "****";
+    private final String ticker = "******";
+
+    public ExecutorSpark2()
+    {
+        sparkConnector = new SparkConnector();
+    }
+
+    public void calculate()
+    {
+        final Dataset<Row> ccarVariablesData = sparkConnector.getCcarVariablesData();
+
+        final Column sliceIdCol = col("SLICE_ID");
+        final Column scenarioCol = col("SCENARIO");
+        final Column tickerCol = col("TICKER");
+        final Column dateCol = col("COLUMN_DATE");
+        final Column valueCol = col("VALUE").cast(new DecimalType(20, ROUND_HALF_UP))
+            .alias("VALUE");
+
+        final Instant start = Instant.now();
+
+        // select data from spark file
+        Dataset<Row> results =
+            ccarVariablesData.select(concat(scenarioCol, tickerCol).alias("SCENARIO_AND_TICKER"), tickerCol, dateCol,
+                valueCol);
+
+        results = results.where(sliceIdCol.equalTo(sliceId)
+            .and(scenarioCol.equalTo(scenario)
+                .and(tickerCol.equalTo(ticker))
+                .and(valueCol.gt(BigDecimal.ZERO)
+                .and(dateCol.between("200501", "200604")))));
+
+        results = results.groupBy("SCENARIO_AND_TICKER")
+            .pivot("COLUMN_DATE")
+            .agg(first(valueCol))
+            .cache();
+
+        results.show();
+
+        // map to key/value Tuple
+        final JavaPairRDD<String, Map<QuarterOfYearSer, BigDecimal>> pairs2 =
+            results.toJavaRDD()
+                .mapToPair((PairFunction<Row, String, Map<QuarterOfYearSer, BigDecimal>>) row -> {
+
+                    final String scenarioAndTicker = row.getAs("SCENARIO_AND_TICKER");
+
+                    final Iterator<StructField> iterator = row.schema()
+                        .iterator().drop(1);
+
+                    Map<QuarterOfYearSer, BigDecimal> map = new LinkedHashMap<>();
+
+                    while (iterator.hasNext())
+                    {
+                        final StructField field = iterator.next();
+                        map.put(QuarterOfYearSer.of(field.name()), row.getAs(field.name()));
+                    }
+
+                    return new Tuple2<>(scenarioAndTicker, map);
+                });
+
+        final JavaRDD<Tuple2<String, Map<QuarterOfYearSer, BigDecimal>>> d1 = pairs2.map(this.d1);
+
+
+
+        System.out.println("Time elapsed: " + Duration.between(start, Instant.now())
+            .toMillis() + " ms.");
+
+        System.out.println("Scenario " + scenario + " and Ticker " + ticker);
+        d1.collect().forEach(System.out::println);
+    }
+
+    Function<Tuple2<String, Map<QuarterOfYearSer, BigDecimal>>, Tuple2<String, Map<QuarterOfYearSer, BigDecimal>>> d1 = tuple -> {
+        final Map<QuarterOfYearSer, BigDecimal> valuesPerQuarter = tuple._2();
+        Map<QuarterOfYearSer, BigDecimal> map = new LinkedHashMap<>();
+
+        final Set<Map.Entry<QuarterOfYearSer, BigDecimal>> entries = valuesPerQuarter.entrySet();
+        for (Map.Entry<QuarterOfYearSer, BigDecimal> entry : entries) {
+            final QuarterOfYearSer quarterOfYear = entry.getKey();
+            final BigDecimal currValue = entry.getValue();
+            BigDecimal previousValue = valuesPerQuarter.get(quarterOfYear.previous()); // why this shit is not being found
+
+            if (previousValue == null)
+                previousValue = ZERO;
+
+            map.put(quarterOfYear, currValue.subtract(previousValue));
+        }
+
+        return new Tuple2<>( "D1-"+ tuple._1(), map);
+    };
+
+    public static void main(String[] args)
+    {
+        new ExecutorSpark().calculate();
+    }
+}
