@@ -1,0 +1,27 @@
+package java.serialization;
+
+import java.util.List;
+
+public class Class1
+{
+    public String name;
+
+    public List<Class2> class2s;
+
+    public Class1(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString()
+    {
+        final StringBuilder sb = new StringBuilder("Class1{");
+        sb.append("name='")
+            .append(name)
+            .append('\'');
+        sb.append(", class2s=")
+            .append(class2s);
+        sb.append('}');
+        return sb.toString();
+    }
+}
