@@ -1,0 +1,70 @@
+package serialization;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.SparkSession;
+
+public class SerializationTest
+{
+    private SparkSession spark;
+
+    public SerializationTest()
+    {
+
+        spark = SparkSession
+            .builder()
+            .master("local[*]")
+            .config(new SparkConf().set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                                   .registerKryoClasses(new Class[] {Class3.class}))
+            .appName("spark_test")
+            .getOrCreate();
+
+        final SparkConf conf = spark.sparkContext()
+            .getConf();
+
+        spark.sparkContext().setLogLevel("ERROR");
+    }
+
+    public void execute()
+    {
+        Class1 c1 = new Class1("N1");
+        c1.class2s = Collections.singletonList(Class2.getInstance());
+
+        Class1 c2 = new Class1("N2");
+        Class2 c2c2 = Class2.getInstance();
+        c2c2.code = 22;
+        c2.class2s = Collections.singletonList(c2c2);
+
+        Class1 c3 = new Class1("n3");
+        Class2 c3c3 = Class2.getInstance();
+        c3c3.code = 33;
+        c3.class2s = Collections.singletonList(c3c3);
+
+        Class3 class3 = Class3.getInstance();
+
+        List<Class1> classes = Arrays.asList(c1,c2,c3);
+
+        List<Class3> classes3 = Collections.singletonList(Class3.getInstance());
+
+        final Dataset<Class3> df3 = spark.createDataset(classes3, Encoders.kryo(Class3.class));
+
+        final Dataset<Class1> df = spark.createDataset(classes, Encoders.kryo(Class1.class));
+
+        final Dataset<String> map =
+            df.map((MapFunction<Class1, String>) c -> c.name + " : " +  Class3.getInstance().id, Encoders.STRING());
+
+        map.collectAsList().forEach(System.out::println);
+
+    }
+
+    public static void main(String[] args)
+    {
+        new SerializationTest().execute();
+    }
+}
