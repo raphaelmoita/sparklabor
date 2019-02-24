@@ -2,9 +2,16 @@ package org.moita.json;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.codehaus.jackson.annotate.JsonIgnore;
+
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 @JsonDeserialize(builder = QuarterOfYear.Builder.class)
 public class QuarterOfYear
@@ -39,10 +46,6 @@ public class QuarterOfYear
         return quarter;
     }
 
-    public int getQuarterAsInt() {
-        return quarter.asInt();
-    }
-
     public int getYear() {
         return year;
     }
@@ -67,6 +70,10 @@ public class QuarterOfYear
         return quarterOfYear;
     }
 
+    public static QuarterOfYear of(int quarter, int year) {
+        return of("Q" + quarter, year);
+    }
+
     public static QuarterOfYear of(Quarter quarter, int year) {
         return new QuarterOfYear(quarter, year);
     }
@@ -78,6 +85,21 @@ public class QuarterOfYear
 
     public static QuarterOfYear of(String quarter, String year) {
         return of(quarter, Integer.valueOf(year));
+    }
+
+    public static QuarterOfYear of(String date) {
+        DateFormat df = new SimpleDateFormat("yyyyMM");
+        Calendar calendar = Calendar.getInstance();
+        try {
+            calendar.setTime(df.parse(date));
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+        int month = calendar.get(Calendar.MONTH);
+        int year = calendar.get(Calendar.YEAR);
+        int quarter = month / 3 + 1;
+
+        return of(quarter, year);
     }
 
     @JsonPOJOBuilder()
@@ -143,5 +165,6 @@ public class QuarterOfYear
         System.out.println(QuarterOfYear.of("Q3", 1987));
         System.out.println(QuarterOfYear.of("Q2", "1977"));
         System.out.println(QuarterOfYear.of("2", "1979"));
+        System.out.println(QuarterOfYear.of("201812"));
     }
 }

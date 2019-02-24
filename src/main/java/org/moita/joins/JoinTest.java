@@ -18,7 +18,7 @@ public class JoinTest {
 
         spark = SparkSession
                 .builder()
-                .master("local")
+                .master("local[*]")
                 .appName("spark_labor")
                 .getOrCreate();
 
@@ -32,13 +32,14 @@ public class JoinTest {
         employeeDataSet = frameReader.load(EMPLOYEE);
 
         companyDataSet = frameReader.load(COMPANY);
+        companyDataSet = companyDataSet.withColumnRenamed("NAME", "COMPANY_NAME");
 
         employeeDataSet.show();
         companyDataSet.show();
 
         // company columns
         final Column companyCode = companyDataSet.col("CODE");
-        final Column companyName = companyDataSet.col("NAME");
+        final Column companyName = companyDataSet.col("COMPANY_NAME");
 
         // employee columns
         final Column employeeCompanyCode = employeeDataSet.col("COMPANY_CODE");
@@ -49,9 +50,9 @@ public class JoinTest {
 
         join = join.drop(companyCode).drop(employeeCompanyCode);
 
-        join = join.select(employeeName, employeeAge, companyName.alias("COMPANY_NAME"));
+        //join = join.select(employeeName, employeeAge, companyName.alias("COMPANY_NAME"));
 
-//        join = join.withColumnRenamed(companyName.named().name(), "COMPANY_NAME");
+        //join = join.withColumnRenamed(companyName.named().name(), "COMPANY_NAME");
 
         join.show();
 

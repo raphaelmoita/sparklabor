@@ -9,13 +9,13 @@ import org.apache.spark.sql.types.DataTypes;
 import java.time.Duration;
 import java.time.Instant;
 
-public class ReduceByKey {
+public class UserDefinedFunc {
 
     private final String filePath;
     private final SparkSession.Builder builder;
     private Dataset<Row> data;
 
-    public ReduceByKey() {
+    public UserDefinedFunc() {
 
         Logger.getLogger("org.apache").setLevel(Level.ERROR);
 
@@ -107,9 +107,9 @@ public class ReduceByKey {
 
             RelationalGroupedDataset relationalGroupedDataset = results.groupBy("key", "quarter_of_year");
 
-            relationalGroupedDataset = relationalGroupedDataset.pivot("value");
+//            relationalGroupedDataset = relationalGroupedDataset.pivot("value");
 
-            Dataset<Row> agg = relationalGroupedDataset.agg(functions.sum("value"));
+            Dataset<Row> agg = relationalGroupedDataset.agg(functions.sum("value").alias("value"));
 
             Dataset<Row> ordered = agg.orderBy("quarter_of_year");
 
@@ -123,6 +123,6 @@ public class ReduceByKey {
     }
 
     public static void main(String[] args) {
-        new ReduceByKey().execute();
+        new UserDefinedFunc().execute();
     }
 }
